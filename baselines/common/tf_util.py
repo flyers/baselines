@@ -165,6 +165,10 @@ def function(inputs, outputs, updates=None, givens=None):
     outputs: [tf.Variable] or tf.Variable
         list of outputs or a single output to be returned from function. Returned
         value will also have the same shape.
+    updates: [tf.Operation] or tf.Operation
+        list of update functions or single update function that will be run whenever
+        the function is called. The return is ignored.
+
     """
     if isinstance(outputs, list):
         return _Function(inputs, outputs, updates, givens=givens)
@@ -293,7 +297,7 @@ def display_var_info(vars):
         if "/Adam" in name or "beta1_power" in name or "beta2_power" in name: continue
         v_params = np.prod(v.shape.as_list())
         count_params += v_params
-        if "/b:" in name or "/biases" in name: continue    # Wx+b, bias is not interesting to look at => count params, but not print
+        if "/b:" in name or "/bias" in name: continue    # Wx+b, bias is not interesting to look at => count params, but not print
         logger.info("   %s%s %i params %s" % (name, " "*(55-len(name)), v_params, str(v.shape)))
 
     logger.info("Total model parameters: %0.2f million" % (count_params*1e-6))
@@ -333,7 +337,7 @@ def save_state(fname, sess=None):
 
 def save_variables(save_path, variables=None, sess=None):
     sess = sess or get_session()
-    variables = variables or tf.trainable_variables()
+    variables = variables or tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
 
     ps = sess.run(variables)
     save_dict = {v.name: value for v, value in zip(variables, ps)}
@@ -344,7 +348,7 @@ def save_variables(save_path, variables=None, sess=None):
 
 def load_variables(load_path, variables=None, sess=None):
     sess = sess or get_session()
-    variables = variables or tf.trainable_variables()
+    variables = variables or tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES)
 
     loaded_params = joblib.load(os.path.expanduser(load_path))
     restores = []
