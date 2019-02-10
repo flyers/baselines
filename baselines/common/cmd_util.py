@@ -8,6 +8,7 @@ try:
 except ImportError:
     MPI = None
 
+from importlib import import_module
 import gym
 from gym.wrappers import FlattenDictWrapper
 from baselines import logger
@@ -178,3 +179,48 @@ def parse_unknown_args(args):
             preceded_by_key = False
 
     return retval
+
+
+def make_airsim_env(env_id, seed, rank=0, airsim_kwargs=None):
+    """
+    Create a wrapped, monitored gym.Env for AirSim.
+    """
+    airsim_kwargs = airsim_kwargs or {}
+    env_module = import_module('.'.join(['airgym', env_id]))
+    env_func = env_module.Env
+    set_global_seeds(seed)
+    env = env_func(**airsim_kwargs)
+    logger_path = None if logger.get_dir() is None else os.path.join(logger.get_dir(), str(rank))
+    env = Monitor(env, logger_path, allow_early_resets=True)
+    return env
+
+
+def airsim_common_arg_parser():
+    """
+    Create an argparse.ArgumentParser for run_drone.py.
+    """
+    parser = arg_parser()
+    parser.add_argument('--env', help='environment ID', type=str, default='Block')
+    parser.add_argument('--global_seed', help='RNG seed', type=int, default=None)
+    parser.add_argument('--alg', help='Algorithm', type=str, default='ddpg')
+    parser.add_argument('--num_timesteps', type=float, default=1e6),
+    parser.add_argument('--network', help='network type (mlp, cnn, lstm, cnn_lstm, conv_only)', default=None)
+    parser.add_argument('--reward_scale', help='Reward scale factor. Default: 1.0', default=1.0, type=float)
+    parser.add_argument('--save_path', help='Path to save trained model to', default=None, type=str)
+    parser.add_argument('--save_video_interval', help='Save video every x steps (0 = disabled)', default=0, type=int)
+    parser.add_argument('--save_video_length', help='Length of recorded video. Default: 200', default=200, type=int)
+    parser.add_argument('--play', default=False, action='store_true')
+    return parser
+
+
+def airsim_env_arg_parser():
+    """
+    Create an argparse.ArgumentParser for arguments related to specific airsim env
+    """
+    parser = arg_parser()
+    parser.add_argument('--step_duration', help='step duration of control command in AirSim', type=float, default=0.5)
+    parser.add_argument('--target_name', help='target mesh name in Unreal', type=str, default='AI_Target')
+    parser.add_argument('--ground_z', help='ground level of this airsim env', type=float, required=True)
+    parser.add_argument('--frame_skip', help='frame skip parameter', type=int, default=1)
+    parser.add_argument('--timestep_limit', help='timestep limit of this airsim env', type=int, default=1000)
+    return parser

@@ -239,7 +239,7 @@ def learn(env,
 
     episode_rewards = [0.0]
     saved_mean_reward = None
-    obs = env.reset()
+    obs, info = env.reset()
     reset = True
 
     with tempfile.TemporaryDirectory() as td:
@@ -279,14 +279,14 @@ def learn(env,
             action = act(np.array(obs)[None], update_eps=update_eps, **kwargs)[0]
             env_action = action
             reset = False
-            new_obs, rew, done, _ = env.step(env_action)
+            new_obs, rew, done, info = env.step(env_action)
             # Store transition in the replay buffer.
             replay_buffer.add(obs, action, rew, new_obs, float(done))
             obs = new_obs
 
             episode_rewards[-1] += rew
             if done:
-                obs = env.reset()
+                obs, info = env.reset()
                 episode_rewards.append(0.0)
                 reset = True
 
